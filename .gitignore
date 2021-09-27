@@ -1,0 +1,15 @@
+*.pyc
+*.pth
+.vscode/
+workspace.code-workspace
+notebooks/runs/*
+samples/runs/*
+weights/
+
+ref/
+*.pth
+*.bat
+.idea/*
+__pycache__/*
+runs/
+*.zip
