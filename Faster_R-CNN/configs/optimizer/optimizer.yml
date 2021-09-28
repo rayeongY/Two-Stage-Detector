@@ -1,0 +1,6 @@
+OPTIMIZER:
+  METHOD: 'adam'
+  BATCH_SIZE: 4
+  EPOCHS: 10
+  LR: 0.0001
+  WD: 0
