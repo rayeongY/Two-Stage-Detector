@@ -4,7 +4,6 @@ import numpy as np
 from data.dataset import DataSet
 
 import torch
-from torch import optim
 import torch.nn as nn
 from torch.utils.data import DataLoader
 

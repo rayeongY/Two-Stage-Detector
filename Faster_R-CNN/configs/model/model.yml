@@ -1,5 +1,9 @@
 MODEL:
   NAME: 'Faster R-CNN'
-  ANCHORS: [[[], [], []],
-            [[], [], []],
-            [[], [], []]]
+  
+  BACKBONE: "vgg16"
+  SUB_SAMPLING: 16
+
+  INPUT_SIZE:
+    WIDTH: 224
+    HEIGHT: 224

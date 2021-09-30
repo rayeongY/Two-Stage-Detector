@@ -1,8 +1,9 @@
+from common.utils import create_label_files
+
 import os
 import numpy as np
 
 from PIL import Image
-from pycocotools.coco import COCO
 
 import torch
 import torchvision
@@ -15,6 +16,7 @@ class DataSet(Dataset):
         dataset_opt,
         model_opt,
         split="train",
+        json_path=None
     ):
         super(DataSet, self).__init__()
 
@@ -22,45 +24,21 @@ class DataSet(Dataset):
         self.model_opt = model_opt
         self.classes = self.daodataset_opt["DATASET"]["CLASSES"]
         
-        dataset_name =dataset_opt["DATASET"]["NAME"]
+        dataset_name = dataset_opt["DATASET"]["NAME"]
 
         assert split == "train" or split == "valid"
         # assert dataset_name in ["ship", "yolo-dataset"]
                 
         # if dataset_name == "yolo-dataset" or dataset_name == "ship":
         if split == "train":
-            dataset_type = "train"
+            self.split = "train"
         elif split == "valid":
-            dataset_type = "valid"
+            self.split = "valid"
 
-        # root = self.daodataset_opt["DATASET"]["ROOT"]
-        self.split = split
-        
-        # self.dataset = self.load_dataset(os.path.join(root, dataset_type))
-        self.dataset = self.load_dataset(self.split)
+        if not json_path is None:
+            create_label_files(dataset_opt, json_path)
 
-
-    def __getitem__(self, idx):
-        
-        img_path, label_path = self.dataset[idx]
-
-        ## load img
-        img_file = Image.open(img_path)
-        t = torchvision.transforms.Compose([torchvision.transforms.Resize((800, 800)), torchvision.transforms.ToTensor()])
-
-        img_file = t(img_file)
-
-        # ## load label
-        # label_f = open(label_path, "r")
-
-        # labels = np.zeros((0, 5))
-        # if os.fstat(label_f.fileno()).st_size:
-        #     labels = np.loadtxt(label_f, dtype="float")
-        #     labels = labels.reshape(-1, 5)
-
-        # label_maps = create_label_map(labels, self.model_opt)
-
-        return img_file, labels, img_path
+        self.dataset = self.load_dataset()
 
 
     def __len__(self):
@@ -68,40 +46,52 @@ class DataSet(Dataset):
 
 
     def __getitem__(self, index):
-        pass
+        img_path, label_path = self.dataset[index]
 
+        ## load img
+        img_file = Image.open(img_path)
+        t = torchvision.transforms.Compose([torchvision.transforms.Resize((496, 496)), torchvision.transforms.ToTensor()])
+
+        img_file = t(img_file)
+
+        ## load label
+        label_f = open(label_path, "r")
+
+        labels = np.zeros((0, 5))
+        if os.fstat(label_f.fileno()).st_size:
+            labels = np.loadtxt(label_f, dtype="float")
+            labels = labels.reshape(-1, 5)
+
+        # label_maps = create_label_map(labels, self.model_opt)
 
         _data = {
-            "img": ...,
-            # "label": ...,
-            "img_path": ...,
+            "img": img_file,
+            "label": labels,
+            "img_path": img_path,
+            # "label_map": label_maps
         }
         return _data
 
 
     # def load_dataset(self, f_list_path):
-    def load_dataset(self, dataset_path):
-        
-        coco = COCO(dataset_path)
-
-        ## 
-
-
+    def load_dataset(self):
+        root = self.dataset_opt["DATASET"]["ROOT"]
+        dataset_path = os.path.join(root, self.split).replace(os.sep, "/")
 
 
         image_set = []
 
-        # for r, _, f in os.walk(dataset_path):
-        #     for file in f:
-        #         if file.lower().endswith((".png", ".jpg", ".bmp", ".jpeg")):
-        #             # set paths - both image and label file
-        #             img_path = os.path.join(r, file).replace(os.sep, '/')
-        #             label_path = os.path.splitext(img_path)[0] + ".txt"
+        for r, _, f in os.walk(dataset_path):
+            for file in f:
+                if file.lower().endswith((".png", ".jpg", ".bmp", ".jpeg")):
+                    # set paths - both image and label file
+                    img_path = os.path.join(r, file).replace(os.sep, '/')
+                    label_path = os.path.splitext(img_path)[0] + ".txt"
 
-        #             if not os.path.isfile(img_path) or not os.path.isfile(label_path):
-        #                 continue
+                    if not os.path.isfile(img_path) or not os.path.isfile(label_path):
+                        continue
                                 
-        #             image_set.append((img_path, label_path))
+                    image_set.append((img_path, label_path))
                 
         return image_set
     
@@ -110,31 +100,23 @@ class DataSet(Dataset):
         batch_input = {}
 
         img_files = []
-        # labels = []
+        labels = []
         img_paths = []
-        # maps_0 = []
-        # maps_1 = []
-        # maps_2 = []
+        # label_maps = []
 
         for b in batch:
-            img_files.append(b[0])
-        #     labels.append(b[1])
-            img_paths.append(b[2])
-
-        #     maps_0.append(b[3][0])
-        #     maps_1.append(b[3][1])
-        #     maps_2.append(b[3][2])
+            img_files.append(b["img"])
+            labels.append(b["label"])
+            img_paths.append(b["img_path"])
+            # label_maps.append(b["label_map"])
 
         img_files = torch.stack(img_files, 0)
-
-        # maps_0 = torch.stack(maps_0, 0)
-        # maps_1 = torch.stack(maps_1, 0)
-        # maps_2 = torch.stack(maps_2, 0)
-        # label_maps = [maps_0, maps_1, maps_2]
+        # labels = torch.stack(labels, 0)
+        # label_maps = torch.stack(label_maps, 0)
 
         batch_input = {
             "img": img_files,
-        #     "label": labels,
+            "label": labels,
             "img_path": img_paths,
         #     "label_map": label_maps
         }

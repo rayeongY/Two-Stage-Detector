@@ -1,4 +1,6 @@
+from common.utils import *
 
+import timm
 
 import torch
 import torch.nn as nn
@@ -11,9 +13,31 @@ class FasterRCNN(nn.module):
         model_opt,
         weight_path=None
     ):
-        super(FastRCNN, self).__init__()
+        super(FasterRCNN, self).__init__()
 
-        ## Set
+        self.num_classes = model_opt["MODEL"]["NUM_CLASSES"]
+        
+        ## backbone: VGG16
+        self.backbone = timm.create_model(
+            model_name=model_opt["MODEL"]["BACKBONE"],
+            pretrained=True,
+            features_only=True
+        )
+        self.stage_channels = self.backbone.feature_info.channels()
+
+        ## Region Proposal Network
+        self.rpn = RPN()
+
+        ## RoI Pooling ???
+        self.pooling = RoIPool(
+        
+        )
+
+        ## Classifier
+        self.classifier = FastRCNN(
+
+        )
+
 
         if weight_path is not None:
             self.load_weights(weight_path)
@@ -21,13 +45,32 @@ class FasterRCNN(nn.module):
 
     def forward(self, x):
 
-        if self.training:
+        anchors = anchor_generator(x)
+        feature_maps = self.backbone(x)
 
-            return x
+        if self.training:
+            t_anchors = t_anchor_generator(anchors, x)
+            score_and_regs = self.rpn(feature_maps)
+
+            proposals = self.proposal(score_and_regs, anchors)
+            t_proposals = t_prop_generator(proposals)
+
+            rois = self.pooling(proposals)
+            preds = self.classifier(rois)
+
+            return preds
         
         else:
+            score_and_regs = self.rpn(feature_maps)
+            proposals = self.proposal(score_and_regs, anchors)
+            rois = self.pooling(proposals)
+            preds = self.classifier(rois)
 
-            return x
+            ## NMS
+            result = nms(preds)
+            
+            return result
+
 
     def load_weights(self, weight_path):
         
@@ -96,3 +139,26 @@ class FasterRCNN(nn.module):
             )
 
         print(f"{ptr/1024*4/1024.:.0f}mb / {weights.size/1024*4/1024.:.0f}mb", end="\r")
+
+
+class RPN(nn.modeul):
+    def __init__(
+        self,
+    ):
+        super(RPN, self).__init__()
+
+
+class RoIPool(nn.modeul):
+    def __init__(
+        self,
+    ):
+        super(RoIPool, self).__init__()
+
+
+class FastRCNN(nn.modeul):
+    def __init__(
+        self,
+    ):
+        super(FastRCNN, self).__init__()
+
+
