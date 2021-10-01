@@ -3,7 +3,7 @@
 import torch.nn as nn
 
 
-class RPNLoss(nn.module):
+class RPNLoss(nn.Module):
     def __init__(self):
         super(RPNLoss, self).__init__()
         
@@ -29,7 +29,7 @@ class RPNLoss(nn.module):
 
 
 
-class ClassificationLoss(nn.module):
+class ClassificationLoss(nn.Module):
     def __init__(self):
         super(ClassificationLoss, self).__init__()
 

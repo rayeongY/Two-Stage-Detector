@@ -1,3 +1,4 @@
+from numpy.lib.arraypad import pad
 from common.utils import *
 
 import timm
@@ -7,7 +8,7 @@ import torch.nn as nn
 from torchvision.models import vgg16
 
 
-class FasterRCNN(nn.module):
+class FasterRCNN(nn.Module):
     def __init__(
         self,
         model_opt,
@@ -141,21 +142,57 @@ class FasterRCNN(nn.module):
         print(f"{ptr/1024*4/1024.:.0f}mb / {weights.size/1024*4/1024.:.0f}mb", end="\r")
 
 
-class RPN(nn.module):
+class RPN(nn.Module):
     def __init__(
         self,
+        in_channels,
+        model_opt
     ):
         super(RPN, self).__init__()
 
+        self.model_opt = model_opt
 
-class RoIPool(nn.module):
+        self.rpn_Conv = nn.Conv2d(          ## https://github.com/jwyang/faster-rcnn.pytorch/blob/pytorch-1.0/lib/model/rpn/rpn.py#:~:text=self.RPN_Conv%20%3D%20nn.Conv2d(self.din%2C%20512%2C%203%2C%201%2C%201%2C%20bias%3DTrue)
+            in_channels, 
+            out_channels=512,
+            kernel_size=3,
+            stride=1,
+            padding=1,
+            bias=True
+        )
+
+        num_anchors = model_opt["MODEL"]["NUM_ANCHORS"]
+        self.rpn_obj_score = nn.Conv2d(
+            in_channels=512,
+            out_channels=(2 * num_anchors),
+            kernel_size=1,
+            stride=1,
+            padding=0
+        )
+        self.rpn_coord_score = nn.Conv2d(
+            in_channels=512,
+            out_channels=(4 * num_anchors),
+            kernel_size=3,
+            stride=1,
+            padding=0
+        )
+
+
+        def forward(f_map):
+            pass
+
+
+
+
+
+class RoIPool(nn.Module):
     def __init__(
         self,
     ):
         super(RoIPool, self).__init__()
 
 
-class FastRCNN(nn.module):
+class FastRCNN(nn.Module):
     def __init__(
         self,
     ):
