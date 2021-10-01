@@ -141,21 +141,21 @@ class FasterRCNN(nn.module):
         print(f"{ptr/1024*4/1024.:.0f}mb / {weights.size/1024*4/1024.:.0f}mb", end="\r")
 
 
-class RPN(nn.modeul):
+class RPN(nn.module):
     def __init__(
         self,
     ):
         super(RPN, self).__init__()
 
 
-class RoIPool(nn.modeul):
+class RoIPool(nn.module):
     def __init__(
         self,
     ):
         super(RoIPool, self).__init__()
 
 
-class FastRCNN(nn.modeul):
+class FastRCNN(nn.module):
     def __init__(
         self,
     ):
