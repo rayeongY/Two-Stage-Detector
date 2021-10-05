@@ -1,5 +1,6 @@
 from numpy.lib.arraypad import pad
 from common.utils import *
+from loss import *
 
 import timm
 
@@ -27,7 +28,10 @@ class FasterRCNN(nn.Module):
         self.stage_channels = self.backbone.feature_info.channels()
 
         ## Region Proposal Network
-        self.rpn = RPN()
+        self.rpn = RPN(
+            in_channels=...,
+            model_opt=model_opt
+        )
 
         ## RoI Pooling ???
         self.pooling = RoIPool(
@@ -39,31 +43,38 @@ class FasterRCNN(nn.Module):
 
         )
 
+        
+        self.rpnLoss = RPNLoss()
+        self.clsLoss = ClassificationLoss()
+
 
         if weight_path is not None:
             self.load_weights(weight_path)
 
 
-    def forward(self, x):
+    def forward(self, x, logger, n_iter):
 
         anchors = anchor_generator(x)
         feature_maps = self.backbone(x)
 
         if self.training:
-            t_anchors = t_anchor_generator(anchors, x)
-            score_and_regs = self.rpn(feature_maps)
+            t_anchors = self.t_anchor_generator(anchors, x)
+            rpn_preds = self.rpn(feature_maps)
 
-            proposals = self.proposal(score_and_regs, anchors)
-            t_proposals = t_prop_generator(proposals)
+            proposals = self.create_proposals(rpn_preds, anchors)
+            t_proposals = self.t_prop_generator(proposals)
 
             rois = self.pooling(proposals)
             preds = self.classifier(rois)
 
-            return preds
+            rpn_loss = self.rpnLoss(rpn_preds, t_anchors, logger, n_iter)
+            cls_loss = self.clsLoss(preds, t_proposals, logger, n_iter)
+
+            return rpn_loss, cls_loss
         
         else:
-            score_and_regs = self.rpn(feature_maps)
-            proposals = self.proposal(score_and_regs, anchors)
+            rpn_preds = self.rpn(feature_maps)
+            proposals = self.proposal(rpn_preds, anchors)
             rois = self.pooling(proposals)
             preds = self.classifier(rois)
 
@@ -71,6 +82,62 @@ class FasterRCNN(nn.Module):
             result = nms(preds)
             
             return result
+
+
+    def create_proposals(
+        self,
+        rpn_preds,
+        anchors,
+    ):
+        ## Transform the anchors according to the bounding box regression coefficients
+        ## to generate transformed anchors
+        ## -> then PRUNE the number of anchors by applying NMS
+        ##    using the probability of an anchor being a foreground region
+
+        proposals = None
+
+
+        return proposals    ## proposals := ROIs & ROI scores
+
+
+
+    def t_anchor_generator(
+        self,
+    ):
+        ## GOAL: to PRODUCE 
+        ##          - a set of "GOOD" anchors
+        ##          - the corresponding fore/background labels and target regression codfficients
+        ##       to train RPN.
+        ##       
+        ## ...
+        ## (1) Eliminate the anchors being out of the image
+        ## (2) Sampling positive/negative anchor boxes
+        ##      - maybe positive anchors == foreground anchors? (whose overlap with some g.t. box is higher than a thresh.)
+        ##      - background are whose overlap with any ground truth box is lower than a thresh.
+        
+        target_anchors = None
+
+        ##
+
+
+        return target_anchors
+
+
+
+    def t_prop_generator(
+        self,
+    ):
+        ## GOAL: to PRUNE the list of anchors produced by the proposal layer
+        ##       and PRODUCE _class specific_ bounding box regression targets
+        ##       that will be used to train FRCN
+        ## ...
+        ## (1) 
+
+        target_proposals = None
+
+
+        return target_proposals
+    
 
 
     def load_weights(self, weight_path):
@@ -161,7 +228,7 @@ class RPN(nn.Module):
             bias=True
         )
 
-        num_anchors = model_opt["MODEL"]["NUM_ANCHORS"]
+        num_anchors = self.model_opt["MODEL"]["NUM_ANCHORS"]
         self.rpn_obj_score = nn.Conv2d(
             in_channels=512,
             out_channels=(2 * num_anchors),
@@ -178,9 +245,13 @@ class RPN(nn.Module):
         )
 
 
-        def forward(f_map):
-            pass
+    def forward(self, f_map):
+        x = self.rpn_Conv(f_map)
 
+        rpn_obj_map = self.rpn_obj_score(x)
+        rpn_coord_map = self.rpn_coord_score(x)
+
+        return rpn_obj_map, rpn_coord_map
 
 
 
@@ -190,6 +261,8 @@ class RoIPool(nn.Module):
         self,
     ):
         super(RoIPool, self).__init__()
+
+
 
 
 class FastRCNN(nn.Module):
